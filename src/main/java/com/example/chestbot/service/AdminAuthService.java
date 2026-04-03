@@ -10,7 +10,7 @@ public class AdminAuthService {
 
     private final String adminKey;
 
-    public AdminAuthService(@Value("${app.admin-key}") String adminKey) {
+    public AdminAuthService(@Value("${app.admin-key:}") String adminKey) {
         this.adminKey = adminKey;
     }
 

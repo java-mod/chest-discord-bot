@@ -4,6 +4,7 @@ import com.example.chestbot.dto.AdminConnectRequest;
 import com.example.chestbot.dto.AdminConnectResponse;
 import com.example.chestbot.dto.AdminFinalizeRequest;
 import com.example.chestbot.dto.ClientChestLogRequest;
+import com.example.chestbot.dto.ClientIslandBankLogRequest;
 import com.example.chestbot.dto.ConnectRequest;
 import com.example.chestbot.dto.IslandConfigResponse;
 import com.example.chestbot.service.ClientSyncService;
@@ -43,6 +44,12 @@ public class ClientSyncController {
     @PostMapping("/events/chest-log")
     public ResponseEntity<Map<String, String>> logChestEvent(@RequestBody ClientChestLogRequest request) {
         clientSyncService.logChestEvent(request);
+        return ResponseEntity.ok(Map.of("status", "ok"));
+    }
+
+    @PostMapping("/events/island-bank-log")
+    public ResponseEntity<Map<String, String>> logIslandBankEvent(@RequestBody ClientIslandBankLogRequest request) {
+        clientSyncService.logIslandBankEvent(request);
         return ResponseEntity.ok(Map.of("status", "ok"));
     }
 }

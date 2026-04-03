@@ -18,6 +18,7 @@ import com.example.chestbot.persistence.repository.ChestDefinitionRepository;
 import com.example.chestbot.persistence.repository.GuildRepository;
 import com.example.chestbot.persistence.repository.IslandChannelRepository;
 import com.example.chestbot.persistence.repository.IslandRepository;
+import com.example.chestbot.util.TextSanitizer;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +34,8 @@ import java.util.Locale;
 @Service
 public class IslandService {
 
-    private static final String LOG_PURPOSE = "LOG";
+    public static final String CHEST_LOG_PURPOSE = "CHEST_LOG";
+    public static final String BANK_LOG_PURPOSE = "BANK_LOG";
     private static final String CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private final SecureRandom rng = new SecureRandom();
 
@@ -66,8 +68,9 @@ public class IslandService {
     public IslandEntity setupIsland(String discordGuildId, String guildName, String islandName) {
         requireText(discordGuildId, "discordGuildId");
         requireText(islandName, "islandName");
+        String sanitizedGuildName = sanitizeGuildName(guildName, discordGuildId);
         GuildEntity guild = guildRepository.findByDiscordGuildId(discordGuildId)
-                .orElseGet(() -> guildRepository.save(new GuildEntity(discordGuildId, guildName)));
+                .orElseGet(() -> guildRepository.save(new GuildEntity(discordGuildId, sanitizedGuildName)));
 
         return islandRepository.findFirstByGuildId(guild.getId())
                 .orElseGet(() -> {
@@ -97,18 +100,56 @@ public class IslandService {
 
     @Transactional
     public void bindLogChannel(Long islandId, String discordChannelId) {
+        bindChannel(islandId, discordChannelId, CHEST_LOG_PURPOSE);
+    }
+
+    @Transactional
+    public void bindBankLogChannel(Long islandId, String discordChannelId) {
+        bindChannel(islandId, discordChannelId, BANK_LOG_PURPOSE);
+    }
+
+    @Transactional
+    public void bindChannel(Long islandId, String discordChannelId, String purpose) {
         IslandEntity island = findIsland(islandId);
         requireText(discordChannelId, "discordChannelId");
-        islandChannelRepository.findFirstByIslandIdAndPurpose(islandId, LOG_PURPOSE)
-                .ifPresent(islandChannelRepository::delete);
-        islandChannelRepository.save(new IslandChannelEntity(island, discordChannelId.trim(), LOG_PURPOSE));
+        String normalizedPurpose = normalizeChannelPurpose(purpose);
+        islandChannelRepository.findAllByIslandIdAndPurpose(islandId, normalizedPurpose)
+                .forEach(islandChannelRepository::delete);
+        islandChannelRepository.save(new IslandChannelEntity(island, discordChannelId.trim(), normalizedPurpose));
     }
 
     @Transactional(readOnly = true)
     public String getLogChannelId(Long islandId) {
-        return islandChannelRepository.findFirstByIslandIdAndPurpose(islandId, LOG_PURPOSE)
+        return getChannelId(islandId, CHEST_LOG_PURPOSE);
+    }
+
+    @Transactional(readOnly = true)
+    public String getBankLogChannelId(Long islandId) {
+        return getChannelId(islandId, BANK_LOG_PURPOSE);
+    }
+
+    @Transactional(readOnly = true)
+    public String getChannelId(Long islandId, String purpose) {
+        String normalizedPurpose = normalizeChannelPurpose(purpose);
+        return islandChannelRepository.findFirstByIslandIdAndPurpose(islandId, normalizedPurpose)
                 .map(IslandChannelEntity::getDiscordChannelId)
                 .orElse(null);
+    }
+
+    public String normalizeChannelPurpose(String purpose) {
+        if (purpose == null || purpose.isBlank()) {
+            return CHEST_LOG_PURPOSE;
+        }
+
+        String normalized = purpose.trim().toUpperCase(Locale.ROOT)
+                .replace('-', '_')
+                .replace(' ', '_');
+
+        return switch (normalized) {
+            case "LOG", "CHEST", "CHEST_LOG", "창고", "창고로그", "창고_로그" -> CHEST_LOG_PURPOSE;
+            case "BANK", "BANK_LOG", "ISLAND_BANK", "ISLAND_BANK_LOG", "은행", "은행로그", "은행_로그" -> BANK_LOG_PURPOSE;
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 채널 목적입니다: " + purpose);
+        };
     }
 
     // ── joinCode 기반 조회 ──────────────────────────────────────
@@ -226,8 +267,9 @@ public class IslandService {
     public GuildEntity registerGuild(CreateGuildRequest request) {
         requireText(request.discordGuildId(), "discordGuildId");
         requireText(request.name(), "name");
+        String sanitizedGuildName = sanitizeGuildName(request.name(), request.discordGuildId());
         return guildRepository.findByDiscordGuildId(request.discordGuildId())
-                .orElseGet(() -> guildRepository.save(new GuildEntity(request.discordGuildId().trim(), request.name().trim())));
+                .orElseGet(() -> guildRepository.save(new GuildEntity(request.discordGuildId().trim(), sanitizedGuildName)));
     }
 
     @Transactional(readOnly = true)
@@ -282,6 +324,16 @@ public class IslandService {
 
     private String blankToDefault(String value, String defaultValue) {
         return value == null || value.isBlank() ? defaultValue : value.trim();
+    }
+
+    private String sanitizeGuildName(String guildName, String discordGuildId) {
+        String sanitized = TextSanitizer.stripEmoji(guildName);
+        if (sanitized == null) {
+            return "guild-" + discordGuildId.trim();
+        }
+
+        String normalized = sanitized.trim().replaceAll("\\s{2,}", " ");
+        return normalized.isBlank() ? "guild-" + discordGuildId.trim() : normalized;
     }
 
     private void requireText(String value, String fieldName) {

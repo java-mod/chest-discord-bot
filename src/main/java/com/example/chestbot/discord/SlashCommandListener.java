@@ -52,7 +52,7 @@ public class SlashCommandListener extends ListenerAdapter {
             event.getHook().sendMessage(
                     "✅ 섬 **" + island.getName() + "** 설정 완료!\n" +
                     "📌 참여 코드: `" + island.getJoinCode() + "`\n" +
-                    "이 코드를 플레이어들에게 공유하고, `/창고 채널연결` 로 로그 채널을 지정하세요."
+                    "이 코드를 플레이어들에게 공유하고, `/창고 채널연결` 로 창고/은행 로그 채널을 각각 지정하세요."
             ).queue();
         } catch (Exception e) {
             log.error("섬 설정 오류", e);
@@ -84,13 +84,19 @@ public class SlashCommandListener extends ListenerAdapter {
         event.deferReply(true).queue();
 
         GuildChannelUnion channel = event.getOption("채널", OptionMapping::getAsChannel);
+        String purpose = event.getOption("종류", OptionMapping::getAsString);
         String guildId = event.getGuild().getId();
 
         try {
             IslandEntity island = islandService.getIslandByGuildDiscordId(guildId);
-            islandService.bindLogChannel(island.getId(), channel.getId());
+            String normalizedPurpose = islandService.normalizeChannelPurpose(purpose);
+            islandService.bindChannel(island.getId(), channel.getId(), normalizedPurpose);
+            String purposeLabel = switch (normalizedPurpose) {
+                case IslandService.BANK_LOG_PURPOSE -> "섬 은행 기록";
+                default -> "창고 로그";
+            };
             event.getHook().sendMessage(
-                    "✅ <#" + channel.getId() + "> 채널을 **" + island.getName() + "** 로그 채널로 설정했습니다."
+                    "✅ <#" + channel.getId() + "> 채널을 **" + island.getName() + "** " + purposeLabel + " 채널로 설정했습니다."
             ).queue();
         } catch (Exception e) {
             log.error("채널 연결 오류", e);

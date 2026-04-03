@@ -4,9 +4,11 @@ import com.example.chestbot.persistence.entity.IslandChannelEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
+import java.util.List;
 
 public interface IslandChannelRepository extends JpaRepository<IslandChannelEntity, Long> {
     Optional<IslandChannelEntity> findFirstByIslandIdAndPurpose(Long islandId, String purpose);
+    List<IslandChannelEntity> findAllByIslandIdAndPurpose(Long islandId, String purpose);
 
     boolean existsByDiscordChannelIdAndPurpose(String discordChannelId, String purpose);
 }

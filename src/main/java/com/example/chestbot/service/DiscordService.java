@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import java.awt.Color;
 import java.time.Instant;
 import java.util.EnumSet;
+import java.util.Locale;
 
 @Service
 public class DiscordService {
@@ -28,7 +29,7 @@ public class DiscordService {
     private static final Logger log = LoggerFactory.getLogger(DiscordService.class);
     private static final int EMBED_FIELD_LIMIT = 1000;
 
-    @Value("${discord.token}")
+    @Value("${discord.token:}")
     private String token;
 
     private final SlashCommandListener slashCommandListener;
@@ -70,9 +71,14 @@ public class DiscordService {
                                                 new OptionData(OptionType.STRING, "참여코드", "섬 참여 코드", true),
                                                 new OptionData(OptionType.STRING, "이름", "새로 표시할 섬 이름", true)
                                         ),
-                                new SubcommandData("채널연결", "chest 로그를 보낼 채널 지정")
-                                        .addOptions(new OptionData(OptionType.CHANNEL, "채널", "로그 채널", true)
-                                                .setChannelTypes(ChannelType.TEXT)),
+                                new SubcommandData("채널연결", "창고 또는 섬 은행 로그를 보낼 채널 지정")
+                                        .addOptions(
+                                                new OptionData(OptionType.STRING, "종류", "연결할 로그 종류", true)
+                                                        .addChoice("창고 로그", IslandService.CHEST_LOG_PURPOSE)
+                                                        .addChoice("섬 은행 기록", IslandService.BANK_LOG_PURPOSE),
+                                                new OptionData(OptionType.CHANNEL, "채널", "로그 채널", true)
+                                                        .setChannelTypes(ChannelType.TEXT)
+                                        ),
                                 new SubcommandData("코드", "현재 참여 코드 조회"),
                                 new SubcommandData("코드재발급", "참여 코드 재발급 (기존 코드 무효화)"),
                                 new SubcommandData("관리자코드", "인게임 chest 등록용 1회성 코드 발급 (10분 유효)")
@@ -113,6 +119,36 @@ public class DiscordService {
         );
     }
 
+    public void sendIslandBankLogEmbed(String discordChannelId, String islandName, String playerName,
+                                       String transactionType, long amount, Long balanceAfter,
+                                       String note, Instant timestamp) {
+        if (jda == null) {
+            log.warn("JDA 미초기화 — 메시지 전송 실패");
+            return;
+        }
+
+        TextChannel channel = jda.getTextChannelById(discordChannelId);
+        if (channel == null) {
+            log.warn("채널 ID {} 를 찾을 수 없음", discordChannelId);
+            return;
+        }
+
+        MessageEmbed embed = new EmbedBuilder()
+                .setColor(resolveIslandBankLogColor(transactionType))
+                .setTitle("🏦 섬 은행 기록")
+                .setDescription("**" + islandName + "** 섬의 은행 입출금 내역입니다.")
+                .addField("플레이어", safe(playerName), true)
+                .addField("금액", String.valueOf(amount), true)
+                .addField("사유", limitField(safe(note)), false)
+                .setTimestamp(timestamp)
+                .build();
+
+        channel.sendMessageEmbeds(embed).queue(
+                ok -> log.info("Discord 은행 로그 전송 완료: channel={}", discordChannelId),
+                err -> log.error("Discord 은행 로그 전송 실패: {}", err.getMessage())
+        );
+    }
+
     private Color resolveChestLogColor(String taken, String added) {
         boolean hasTaken = taken != null && !taken.isBlank() && !taken.equals("없음");
         boolean hasAdded = added != null && !added.isBlank() && !added.equals("없음");
@@ -124,6 +160,24 @@ public class DiscordService {
 
     private String safe(String value) {
         return value == null || value.isBlank() ? "없음" : value;
+    }
+
+    private Color resolveIslandBankLogColor(String transactionType) {
+        String normalized = transactionType == null ? "" : transactionType.trim().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "DEPOSIT", "입금" -> new Color(0x2ECC71);
+            case "WITHDRAW", "출금" -> new Color(0xE74C3C);
+            default -> new Color(0x3498DB);
+        };
+    }
+
+    private String resolveBankTransactionLabel(String transactionType) {
+        String normalized = transactionType == null ? "" : transactionType.trim().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "DEPOSIT" -> "입금";
+            case "WITHDRAW" -> "출금";
+            default -> safe(transactionType);
+        };
     }
 
     private String limitField(String value) {

@@ -61,7 +61,7 @@ public class SyncAdminController {
             @RequestBody BindChannelRequest request
     ) {
         adminAuthService.requireAdmin(adminKey);
-        islandService.bindLogChannel(islandId, request.discordChannelId());
+        islandService.bindChannel(islandId, request.discordChannelId(), request.purpose());
         return ResponseEntity.ok().build();
     }
 
