@@ -19,8 +19,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.awt.Color;
+import java.text.NumberFormat;
 import java.time.Instant;
 import java.util.EnumSet;
+import java.util.Currency;
 import java.util.Locale;
 
 @Service
@@ -28,6 +30,7 @@ public class DiscordService {
 
     private static final Logger log = LoggerFactory.getLogger(DiscordService.class);
     private static final int EMBED_FIELD_LIMIT = 1000;
+    private static final Locale KOREA_LOCALE = Locale.KOREA;
 
     @Value("${discord.token:}")
     private String token;
@@ -138,10 +141,17 @@ public class DiscordService {
                 .setTitle("🏦 섬 은행 기록")
                 .setDescription("**" + islandName + "** 섬의 은행 입출금 내역입니다.")
                 .addField("플레이어", safe(playerName), true)
-                .addField("금액", String.valueOf(amount), true)
+                .addField("유형", resolveBankTransactionLabel(transactionType), true)
+                .addField("금액", formatWon(amount), true)
                 .addField("사유", limitField(safe(note)), false)
                 .setTimestamp(timestamp)
                 .build();
+
+        if (balanceAfter != null) {
+            embed = new EmbedBuilder(embed)
+                    .addField("잔액", formatWon(balanceAfter), true)
+                    .build();
+        }
 
         channel.sendMessageEmbeds(embed).queue(
                 ok -> log.info("Discord 은행 로그 전송 완료: channel={}", discordChannelId),
@@ -185,5 +195,13 @@ public class DiscordService {
             return value;
         }
         return value.substring(0, EMBED_FIELD_LIMIT - 4) + "\n...";
+    }
+
+    private String formatWon(long amount) {
+        NumberFormat formatter = NumberFormat.getNumberInstance(KOREA_LOCALE);
+        formatter.setGroupingUsed(true);
+        formatter.setMaximumFractionDigits(0);
+        formatter.setCurrency(Currency.getInstance("KRW"));
+        return formatter.format(amount) + "원";
     }
 }
