@@ -1,0 +1,14 @@
+# 빌드 결과물
+build/
+.gradle/
+bin/
+
+# 데이터베이스
+data/
+
+# 로컬 설정
+local.properties
+
+# IDE
+.idea/
+*.iml
