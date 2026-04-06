@@ -17,9 +17,15 @@ repositories {
     mavenCentral()
 }
 
+bootRun {
+    workingDir = project.projectDir
+}
+
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    implementation 'org.springframework.security:spring-security-crypto'
     implementation 'net.dv8tion:JDA:5.2.1'
 
     runtimeOnly 'com.mysql:mysql-connector-j'
