@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${island.name} + ' — 은행 로그'">은행 로그</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root{--bg:#0B1320;--surface:#142035;--surface2:#1C2D45;--surface3:#243554;--border:#243550;--gold:#F5A623;--gold2:#D4860A;--teal:#4DD9B8;--teal2:#2EC9A5;--red:#FF6B8A;--text:#E2EAF4;--muted:#7891AA;--muted2:#4A6280;}
+        *{font-family:'Noto Sans KR',sans-serif;box-sizing:border-box;}
+        body{background:var(--bg);background-image:linear-gradient(rgba(77,217,184,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(77,217,184,.02) 1px,transparent 1px);background-size:40px 40px;min-height:100vh;color:var(--text);}
+        .topnav{background:var(--surface);border-bottom:2px solid var(--teal);padding:0 24px;height:58px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.4);}
+        .nav-brand{font-weight:900;font-size:1.05rem;color:var(--teal);text-decoration:none;display:flex;align-items:center;gap:6px;letter-spacing:-.5px;}
+        .nav-brand span{color:var(--text);}
+        .island-chip{background:rgba(77,217,184,.12);color:var(--teal);border:1px solid rgba(77,217,184,.25);border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700;}
+        .nav-links{display:flex;gap:4px;margin-left:12px;}
+        .nav-link{color:var(--muted);font-size:.83rem;font-weight:600;padding:6px 14px;border-radius:8px;text-decoration:none;transition:background .15s,color .15s;}
+        .nav-link:hover{background:var(--surface2);color:var(--text);}
+        .nav-link.active{background:rgba(77,217,184,.15);color:var(--teal);}
+        .ms-auto{margin-left:auto;}
+        .btn-logout{background:transparent;border:1px solid var(--muted2);color:var(--muted);border-radius:8px;padding:5px 14px;font-size:.8rem;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s;}
+        .btn-logout:hover{border-color:var(--red);color:var(--red);}
+        .page{padding:24px;}
+        .search-bar{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 20px;margin-bottom:20px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;}
+        .search-field{display:flex;flex-direction:column;gap:5px;}
+        .field-label{font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+        .form-control,.form-select{background:var(--surface2)!important;border:1px solid var(--border)!important;border-radius:8px!important;color:var(--text)!important;padding:8px 14px!important;font-size:.88rem!important;transition:border-color .2s;}
+        .form-control::placeholder{color:var(--muted2);}
+        .form-control:focus,.form-select:focus{border-color:var(--gold)!important;box-shadow:0 0 0 3px rgba(245,166,35,.1)!important;outline:none!important;}
+        .form-select option{background:var(--surface2);}
+        .btn{border-radius:8px!important;font-weight:700!important;font-size:.82rem!important;padding:8px 16px!important;border:none!important;cursor:pointer;transition:opacity .15s,transform .1s;text-decoration:none;display:inline-block;}
+        .btn:hover{opacity:.88;} .btn:active{transform:scale(.97);}
+        .btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#fff!important;box-shadow:0 3px 10px rgba(245,166,35,.28);}
+        .btn-ghost{background:transparent!important;border:1px solid var(--border)!important;color:var(--muted)!important;}
+        .btn-ghost:hover{border-color:var(--muted)!important;color:var(--text)!important;}
+        .btn-export{background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.3)!important;color:var(--gold)!important;}
+        .btn-export:hover{background:rgba(245,166,35,.18)!important;}
+        .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+        .card-head{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-weight:700;font-size:.92rem;}
+        .total-badge{background:var(--surface2);color:var(--muted);border-radius:20px;padding:2px 10px;font-size:.75rem;font-weight:700;}
+        .table{color:var(--text)!important;margin:0;}
+        .table thead th{background:var(--surface2);color:var(--muted);font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;border:none!important;padding:12px 16px!important;}
+        .table tbody td{border-color:var(--border)!important;padding:11px 16px!important;vertical-align:middle;font-size:.86rem;}
+        .table tbody tr:hover td{background:rgba(255,255,255,.02)!important;}
+        .time-col{font-family:monospace;color:var(--muted);font-size:.8rem;}
+        .badge-deposit{background:rgba(77,217,184,.15);color:var(--teal);border:1px solid rgba(77,217,184,.3);border-radius:6px;padding:3px 10px;font-size:.72rem;font-weight:700;}
+        .badge-withdraw{background:rgba(255,107,138,.15);color:var(--red);border:1px solid rgba(255,107,138,.3);border-radius:6px;padding:3px 10px;font-size:.72rem;font-weight:700;}
+        .amount-deposit{color:var(--teal);font-weight:700;font-family:monospace;}
+        .amount-withdraw{color:var(--red);font-weight:700;font-family:monospace;}
+        .pager{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:center;gap:4px;}
+        .pager a,.pager span{background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-size:.82rem;font-weight:600;text-decoration:none;transition:background .15s,color .15s;}
+        .pager a:hover{background:var(--surface3);color:var(--text);}
+        .pager .current{background:rgba(77,217,184,.15);color:var(--teal);border-color:rgba(77,217,184,.3);}
+        .pager .disabled{opacity:.35;pointer-events:none;}
+    </style>
+</head>
+<body>
+
+<nav class="topnav">
+    <a href="/dashboard/island/logs" class="nav-brand">📦 <span>창고지기</span></a>
+    <span class="island-chip" th:text="${island.name}"></span>
+    <div class="nav-links">
+        <a class="nav-link" th:href="@{/dashboard/island/logs}">📋 창고 로그</a>
+        <a class="nav-link active" th:href="@{/dashboard/island/bank}">💰 은행 로그</a>
+        <a class="nav-link" th:href="@{/dashboard/island/config}">⚙ 창고 설정</a>
+    </div>
+    <div class="ms-auto">
+        <form th:action="@{/dashboard/island/logout}" method="post" style="display:inline">
+            <button class="btn-logout">로그아웃</button>
+        </form>
+    </div>
+</nav>
+
+<div class="page">
+
+    <!-- 검색 바 -->
+    <form method="get" th:action="@{/dashboard/island/bank}" class="search-bar">
+        <div class="search-field">
+            <label class="field-label">플레이어</label>
+            <input type="text" name="playerName" class="form-control" style="width:160px"
+                   placeholder="이름 검색" th:value="${playerName}">
+        </div>
+        <div class="search-field">
+            <label class="field-label">유형</label>
+            <select name="transactionType" class="form-select" style="width:130px">
+                <option value="" th:selected="${transactionType == ''}">전체</option>
+                <option value="DEPOSIT"  th:selected="${transactionType == 'DEPOSIT'}">💚 입금</option>
+                <option value="WITHDRAW" th:selected="${transactionType == 'WITHDRAW'}">🔴 출금</option>
+            </select>
+        </div>
+        <div style="display:flex;gap:6px;align-items:flex-end">
+            <button type="submit" class="btn btn-gold">검색</button>
+            <a th:href="@{/dashboard/island/bank}" class="btn btn-ghost">초기화</a>
+            <a th:href="@{/dashboard/island/bank/export(playerName=${playerName},transactionType=${transactionType})}"
+               class="btn btn-export">⬇ 내보내기</a>
+        </div>
+    </form>
+
+    <!-- 목록 -->
+    <div class="card">
+        <div class="card-head">
+            💰 섬 은행 거래 로그
+            <span class="total-badge">총 <span th:text="${logs.totalElements}">0</span>건</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>시간</th>
+                    <th>플레이어</th>
+                    <th>유형</th>
+                    <th>금액</th>
+                    <th>사유</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${logs.isEmpty()}">
+                    <td colspan="5" style="text-align:center;padding:48px!important;color:var(--muted)">
+                        <div style="font-size:2.5rem;margin-bottom:8px">💳</div>
+                        기록된 거래가 없습니다.
+                    </td>
+                </tr>
+                <tr th:each="log : ${logs}">
+                    <td class="time-col" th:text="${log.createdAt}"></td>
+                    <td style="font-weight:700" th:text="${log.playerName}"></td>
+                    <td>
+                        <span th:if="${log.deposit}" class="badge-deposit" th:text="${log.transactionLabel}"></span>
+                        <span th:unless="${log.deposit}" class="badge-withdraw" th:text="${log.transactionLabel}"></span>
+                    </td>
+                    <td>
+                        <span th:if="${log.deposit}" class="amount-deposit" th:text="'+ ' + ${log.amount}"></span>
+                        <span th:unless="${log.deposit}" class="amount-withdraw" th:text="'- ' + ${log.amount}"></span>
+                    </td>
+                    <td style="color:var(--muted);font-size:.82rem" th:text="${log.note}"></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 페이지네이션 -->
+        <div class="pager" th:if="${logs.totalPages > 1}">
+            <a th:href="@{/dashboard/island/bank(page=${currentPage-1},playerName=${playerName},transactionType=${transactionType})}"
+               th:classappend="${currentPage==0}? 'disabled'">‹</a>
+            <th:block th:each="i : ${#numbers.sequence(0, logs.totalPages-1)}">
+                <a th:href="@{/dashboard/island/bank(page=${i},playerName=${playerName},transactionType=${transactionType})}"
+                   th:text="${i+1}"
+                   th:classappend="${i==currentPage}? 'current'"></a>
+            </th:block>
+            <a th:href="@{/dashboard/island/bank(page=${currentPage+1},playerName=${playerName},transactionType=${transactionType})}"
+               th:classappend="${currentPage>=logs.totalPages-1}? 'disabled'">›</a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

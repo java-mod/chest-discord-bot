@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>창고지기 관리자 로그인</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0B1320; --surface: #142035; --surface2: #1C2D45;
+            --border: #243550; --gold: #F5A623; --gold2: #D4860A;
+            --teal: #4DD9B8; --red: #FF6B8A; --green: #4CAF7D;
+            --text: #E2EAF4; --muted: #7891AA;
+        }
+        * { font-family: 'Noto Sans KR', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--bg);
+            background-image:
+                linear-gradient(rgba(245,166,35,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(245,166,35,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+        }
+        /* 픽셀 상자 장식 */
+        body::before {
+            content: '📦';
+            position: fixed; top: 20px; left: 30px;
+            font-size: 2.5rem; opacity: 0.06; z-index: 0;
+            animation: float 6s ease-in-out infinite;
+        }
+        body::after {
+            content: '🗝';
+            position: fixed; bottom: 30px; right: 40px;
+            font-size: 3rem; opacity: 0.06; z-index: 0;
+            animation: float 8s ease-in-out infinite reverse;
+        }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+
+        .login-wrap { position: relative; z-index: 1; width: 100%; max-width: 400px; padding: 0 20px; }
+
+        /* 로고 */
+        .logo-block { text-align: center; margin-bottom: 32px; }
+        .logo-chest {
+            font-size: 4rem; display: block; line-height: 1;
+            filter: drop-shadow(0 0 16px rgba(245,166,35,0.5));
+        }
+        .logo-title {
+            font-size: 1.7rem; font-weight: 900; color: var(--gold);
+            text-shadow: 0 0 24px rgba(245,166,35,0.35);
+            letter-spacing: -1px; margin-top: 8px;
+        }
+        .logo-sub { color: var(--muted); font-size: 0.8rem; margin-top: 4px; letter-spacing: 2px; text-transform: uppercase; }
+
+        /* 카드 - 픽셀 테두리 효과 */
+        .login-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-top: 3px solid var(--gold);
+            border-radius: 16px;
+            box-shadow: 0 0 0 1px rgba(245,166,35,0.1), 0 20px 60px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+        .card-inner { padding: 36px 32px; }
+
+        /* 인풋 */
+        .field-label { font-size: 0.75rem; font-weight: 700; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; display: block; }
+        .input-field {
+            width: 100%; background: var(--surface2);
+            border: 1px solid var(--border); border-radius: 10px;
+            padding: 12px 16px; color: var(--text); font-size: 0.95rem;
+            transition: border-color .2s, box-shadow .2s; outline: none;
+        }
+        .input-field::placeholder { color: var(--muted); }
+        .input-field:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(245,166,35,0.12); }
+
+        /* 버튼 */
+        .btn-gold {
+            display: block; width: 100%; padding: 13px;
+            background: linear-gradient(135deg, var(--gold), var(--gold2));
+            border: none; border-radius: 10px; cursor: pointer;
+            font-size: 1rem; font-weight: 700; color: #fff;
+            box-shadow: 0 4px 20px rgba(245,166,35,0.35);
+            transition: transform .15s, box-shadow .15s; margin-top: 24px;
+        }
+        .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 6px 26px rgba(245,166,35,0.48); }
+        .btn-gold:active { transform: translateY(0); }
+
+        /* 알림 */
+        .msg-error { background: rgba(255,107,138,0.12); border: 1px solid rgba(255,107,138,0.3); border-radius: 10px; color: #FF9BB5; padding: 10px 14px; font-size: 0.85rem; margin-bottom: 18px; }
+        .msg-info  { background: rgba(77,217,184,0.1);  border: 1px solid rgba(77,217,184,0.25);  border-radius: 10px; color: #6EEBD6; padding: 10px 14px; font-size: 0.85rem; margin-bottom: 18px; }
+
+        /* 하단 링크 */
+        .bottom-link { text-align: center; margin-top: 20px; }
+        .bottom-link a { color: var(--muted); font-size: 0.8rem; text-decoration: none; transition: color .15s; }
+        .bottom-link a:hover { color: var(--teal); }
+    </style>
+</head>
+<body>
+<div class="login-wrap">
+    <div class="logo-block">
+        <span class="logo-chest">📦</span>
+        <div class="logo-title">창고지기</div>
+        <div class="logo-sub">Admin Dashboard</div>
+    </div>
+
+    <div class="login-card">
+        <div class="card-inner">
+            <div th:if="${error}" class="msg-error" th:text="${error}"></div>
+            <div th:if="${param.logout}" class="msg-info">로그아웃 되었습니다.</div>
+
+            <form th:action="@{/dashboard/login}" method="post">
+                <div class="mb-3">
+                    <label class="field-label">🔑 관리자 비밀번호</label>
+                    <input type="password" name="password" class="input-field"
+                           placeholder="비밀번호를 입력하세요" autofocus required>
+                </div>
+                <button type="submit" class="btn-gold">로그인</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="bottom-link">
+        <a href="/dashboard/island/login">🏝 섬장 대시보드로 이동 →</a>
+    </div>
+</div>
+</body>
+</html>
