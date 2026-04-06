@@ -7,6 +7,8 @@ import com.example.chestbot.dto.ClientChestLogRequest;
 import com.example.chestbot.dto.ClientIslandBankLogRequest;
 import com.example.chestbot.dto.ConnectRequest;
 import com.example.chestbot.dto.IslandConfigResponse;
+import com.example.chestbot.dto.LicenseConnectRequest;
+import com.example.chestbot.dto.LicenseConnectResponse;
 import com.example.chestbot.service.ClientSyncService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,6 +31,11 @@ public class ClientSyncController {
     @PostMapping("/connect")
     public IslandConfigResponse connect(@RequestBody ConnectRequest request) {
         return clientSyncService.connect(request.joinCode());
+    }
+
+    @PostMapping("/connect/license")
+    public LicenseConnectResponse connectWithLicense(@RequestBody LicenseConnectRequest request) {
+        return clientSyncService.connectWithLicense(request.licenseKey());
     }
 
     @PostMapping("/admin/connect")

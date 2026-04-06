@@ -37,6 +37,10 @@ public class IslandEntity {
     @Column(unique = true, length = 16)
     private String joinCode;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "license_id")
+    private LicenseEntity license;
+
     @Column(nullable = false)
     private Instant createdAt;
 
@@ -88,5 +92,13 @@ public class IslandEntity {
 
     public void setJoinCode(String joinCode) {
         this.joinCode = joinCode;
+    }
+
+    public LicenseEntity getLicense() {
+        return license;
+    }
+
+    public void setLicense(LicenseEntity license) {
+        this.license = license;
     }
 }
