@@ -53,8 +53,8 @@ public class ClientSyncService {
     }
 
     @Transactional
-    public IslandConfigResponse connect(String joinCode) {
-        IslandEntity island = islandService.getIslandByJoinCode(joinCode);
+    public IslandConfigResponse connect() {
+        IslandEntity island = islandService.getSingleIslandForClient();
         // 조인 코드 연결은 라이선스 검증 없이 허용 (이벤트 전송 시 검증)
         return islandService.getActiveConfig(island.getId());
     }
@@ -69,13 +69,14 @@ public class ClientSyncService {
                 island.getName(),
                 island.getJoinCode(),
                 config.configVersion(),
-                config.chests()
+                config.chests(),
+                config.members()
         );
     }
 
     @Transactional
-    public AdminConnectResponse adminConnect(String joinCode, String adminCode) {
-        AdminCodeEntity code = islandService.validateAdminCode(joinCode, adminCode);
+    public AdminConnectResponse adminConnect(String adminCode) {
+        AdminCodeEntity code = islandService.validateAdminCodeForSingleIsland(adminCode);
         IslandEntity island = code.getIsland();
         licenseService.requireActiveLicense(island);
         return new AdminConnectResponse(island.getId(), island.getName());
@@ -83,7 +84,7 @@ public class ClientSyncService {
 
     @Transactional
     public IslandConfigResponse adminFinalize(AdminFinalizeRequest request) {
-        AdminCodeEntity code = islandService.validateAdminCode(request.joinCode(), request.adminCode());
+        AdminCodeEntity code = islandService.validateAdminCodeForSingleIsland(request.adminCode());
         code.markUsed();
         IslandEntity island = code.getIsland();
         licenseService.requireActiveLicense(island);
@@ -94,7 +95,7 @@ public class ClientSyncService {
 
     @Transactional
     public void logChestEvent(ClientChestLogRequest request) {
-        IslandEntity island = islandService.getIslandByJoinCode(request.joinCode());
+        IslandEntity island = islandService.getSingleIslandForClient();
         licenseService.requireActiveLicense(island);
         Map<String, Integer> taken = request.taken() == null ? Collections.emptyMap() : request.taken();
         Map<String, Integer> added = request.added() == null ? Collections.emptyMap() : request.added();
@@ -103,9 +104,13 @@ public class ClientSyncService {
         chestLogRepository.save(new ChestLogEntity(
                 island,
                 island.getName(),
-                request.joinCode(),
+                island.getJoinCode(),
                 request.configVersion(),
                 request.playerName(),
+                request.playerUuid(),
+                request.skinTexture(),
+                request.takenVisualData(),
+                request.addedVisualData(),
                 request.chestKey(),
                 toJson(taken),
                 toJson(added),
@@ -141,10 +146,10 @@ public class ClientSyncService {
     @Transactional
     public void logIslandBankEvent(ClientIslandBankLogRequest request) {
         validateIslandBankEvent(request);
-        IslandEntity island = islandService.getIslandByJoinCode(request.joinCode());
+        IslandEntity island = islandService.getSingleIslandForClient();
         licenseService.requireActiveLicense(island);
 
-        String normalizedCode = request.joinCode().trim().toUpperCase();
+        String normalizedCode = island.getJoinCode().trim().toUpperCase();
         String note = sanitizeNote(request.note());
         Instant now = Instant.now();
 
@@ -185,7 +190,6 @@ public class ClientSyncService {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "bank log request is required");
         }
-        requireText(request.joinCode(), "joinCode");
         requireText(request.playerName(), "playerName");
         requireText(request.transactionType(), "transactionType");
         if (request.amount() == null || request.amount() <= 0) {

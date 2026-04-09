@@ -29,8 +29,8 @@ public class ClientSyncController {
     }
 
     @PostMapping("/connect")
-    public IslandConfigResponse connect(@RequestBody ConnectRequest request) {
-        return clientSyncService.connect(request.joinCode());
+    public IslandConfigResponse connect() {
+        return clientSyncService.connect();
     }
 
     @PostMapping("/connect/license")
@@ -40,7 +40,7 @@ public class ClientSyncController {
 
     @PostMapping("/admin/connect")
     public AdminConnectResponse adminConnect(@RequestBody AdminConnectRequest request) {
-        return clientSyncService.adminConnect(request.joinCode(), request.adminCode());
+        return clientSyncService.adminConnect(request.adminCode());
     }
 
     @PostMapping("/admin/finalize")

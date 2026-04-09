@@ -1,4 +1,4 @@
 package com.example.chestbot.dto;
 
-public record AdminConnectRequest(String joinCode, String adminCode) {
+public record AdminConnectRequest(String adminCode) {
 }
