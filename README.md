@@ -11,11 +11,9 @@
 ## 주요 기능
 
 - Discord 슬래시 명령 `/창고`
-  - `설정`: 섬 생성 및 참여 코드 발급
+  - `설정`: 섬 생성 및 서버 연결 준비
   - `섬이름`: 섬 표시 이름 변경
   - `채널연결`: 창고 로그 / 섬 은행 기록 채널 연결
-  - `코드`: 현재 참여 코드 조회
-  - `코드재발급`: 참여 코드 재발급
   - `관리자코드`: 인게임 상자 등록용 1회성 관리자 코드 발급
 - Fabric 모드용 REST API 제공
 - H2 파일 DB 저장
@@ -51,6 +49,8 @@ discord.token=your_discord_bot_token
 app.admin-key=your_admin_key
 ```
 
+로컬 H2 기본값으로 충분하면 위 2개만 있어도 서버와 봇이 함께 뜹니다.
+
 ### 환경변수
 
 | 이름 | 설명 | 기본값 |
@@ -65,6 +65,19 @@ Windows:
 $env:SERVER_PORT="5000"
 .\gradlew.bat bootRun
 ```
+
+빌드된 JAR 실행:
+
+```powershell
+.\gradlew.bat build
+java -jar .\build\libs\chest-discord-bot-1.0.0.jar
+```
+
+## CI / 배포 메모
+
+- `main` 브랜치 push 시 GitHub Actions가 빌드와 태그/릴리즈 생성을 시도합니다.
+- 다만 운영 기준으로는 **GitHub Release에 JAR 자산이 항상 첨부된다고 가정하지 않는 편이 안전합니다.**
+- 실제 배포용 파일은 로컬/CI의 `build/libs/*.jar` 산출물을 직접 확인하는 것을 권장합니다.
 
 macOS / Linux:
 
@@ -88,10 +101,10 @@ export SERVER_PORT="5000"
 ## Discord 사용 흐름
 
 1. Discord 서버에 봇을 초대합니다.
-2. `/창고 설정`으로 섬을 만들고 참여 코드를 발급받습니다.
-3. `/창고 채널연결`로 창고 로그 채널과 섬 은행 기록 채널을 연결합니다.
-4. 게임 클라이언트에서 `/창고봇 연결 <참여코드>`를 입력합니다.
-5. 필요하면 `/창고 관리자코드`를 발급받아 인게임 관리자 등록 흐름에 사용합니다.
+2. `local.properties`에 `discord.token` 등을 채우고 서버를 실행합니다.
+3. Discord에서 `/창고 설정`으로 섬을 만들고 `/창고 채널연결`로 로그 채널을 연결합니다.
+4. 게임 클라이언트에서 `/창고봇 서버 <서버주소>` 후 `/창고봇 연결`을 입력합니다.
+5. 창고 등록이 필요하면 `/창고 관리자코드`를 발급받아 인게임 `/창고봇 관리자 <코드>` 흐름에 사용합니다.
 
 ## 모드 연동 API
 
@@ -101,11 +114,6 @@ export SERVER_PORT="5000"
 
 ```http
 POST /api/v1/client/connect
-Content-Type: application/json
-
-{
-  "joinCode": "ABC123"
-}
 ```
 
 ### 관리자 연결
@@ -115,7 +123,6 @@ POST /api/v1/client/admin/connect
 Content-Type: application/json
 
 {
-  "joinCode": "ABC123",
   "adminCode": "ABCDEFGH"
 }
 ```
@@ -127,7 +134,6 @@ POST /api/v1/client/admin/finalize
 Content-Type: application/json
 
 {
-  "joinCode": "ABC123",
   "adminCode": "ABCDEFGH",
   "chests": [
     {
@@ -150,9 +156,9 @@ POST /api/v1/client/events/chest-log
 Content-Type: application/json
 
 {
-  "joinCode": "ABC123",
   "configVersion": 1,
   "playerName": "Steve",
+  "playerUuid": "uuid",
   "chestKey": "ore-storage",
   "taken": {
     "diamond": 3
@@ -172,7 +178,6 @@ POST /api/v1/client/events/island-bank-log
 Content-Type: application/json
 
 {
-  "joinCode": "ABC123",
   "playerName": "Steve",
   "transactionType": "DEPOSIT",
   "amount": 5000,
@@ -197,7 +202,7 @@ Content-Type: application/json
 
 - `local.properties`는 절대 커밋하지 마세요.
 - Discord 채널이 연결되지 않으면 API 요청은 성공해도 Discord 전송은 생략될 수 있습니다.
-- 최초 섬 생성과 참여 코드 발급은 Discord 명령 흐름을 기준으로 사용하는 것이 가장 안전합니다.
+- 현재 모드 연결은 참여 코드가 아니라 **서버 주소 기반**입니다.
 - 모드와 백엔드의 엔드포인트 계약이 다르면 연결은 성공해도 로그 전송이 실패할 수 있습니다.
 
 ## 프로젝트 구조
