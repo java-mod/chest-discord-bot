@@ -67,13 +67,10 @@ public class DiscordService {
         jda.updateCommands().addCommands(
                 Commands.slash("창고", "창고 관리")
                         .addSubcommands(
-                                new SubcommandData("설정", "섬 등록 및 참여 코드 발급")
+                                new SubcommandData("설정", "섬 등록 및 서버 연결 준비")
                                         .addOptions(new OptionData(OptionType.STRING, "섬이름", "섬 이름", true)),
                                 new SubcommandData("섬이름", "섬 표시 이름 변경")
-                                        .addOptions(
-                                                new OptionData(OptionType.STRING, "참여코드", "섬 참여 코드", true),
-                                                new OptionData(OptionType.STRING, "이름", "새로 표시할 섬 이름", true)
-                                        ),
+                                        .addOptions(new OptionData(OptionType.STRING, "이름", "새로 표시할 섬 이름", true)),
                                 new SubcommandData("채널연결", "창고 또는 섬 은행 로그를 보낼 채널 지정")
                                         .addOptions(
                                                 new OptionData(OptionType.STRING, "종류", "연결할 로그 종류", true)
@@ -82,8 +79,6 @@ public class DiscordService {
                                                 new OptionData(OptionType.CHANNEL, "채널", "로그 채널", true)
                                                         .setChannelTypes(ChannelType.TEXT)
                                         ),
-                                new SubcommandData("코드", "현재 참여 코드 조회"),
-                                new SubcommandData("코드재발급", "참여 코드 재발급 (기존 코드 무효화)"),
                                 new SubcommandData("관리자코드", "인게임 chest 등록용 1회성 코드 발급 (10분 유효)")
                         )
         ).queue(

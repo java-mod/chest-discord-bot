@@ -33,8 +33,6 @@ public class SlashCommandListener extends ListenerAdapter {
             case "설정"      -> handleSetup(event);
             case "섬이름"    -> handleIslandName(event);
             case "채널연결"   -> handleBindChannel(event);
-            case "코드"      -> handleShowCode(event);
-            case "코드재발급" -> handleRegenerateCode(event);
             case "관리자코드" -> handleAdminCode(event);
         }
     }
@@ -51,8 +49,7 @@ public class SlashCommandListener extends ListenerAdapter {
             IslandEntity island = islandService.setupIsland(guildId, guildName, islandName);
             event.getHook().sendMessage(
                     "✅ 섬 **" + island.getName() + "** 설정 완료!\n" +
-                    "📌 참여 코드: `" + island.getJoinCode() + "`\n" +
-                    "이 코드를 플레이어들에게 공유하고, `/창고 채널연결` 로 창고/은행 로그 채널을 각각 지정하세요."
+                    "이제 `/창고 채널연결` 로 창고/은행 로그 채널을 각각 지정하고, 모드에서는 서버 주소로 바로 연결하세요."
             ).queue();
         } catch (Exception e) {
             log.error("섬 설정 오류", e);
@@ -64,14 +61,12 @@ public class SlashCommandListener extends ListenerAdapter {
         if (!isAdmin(event)) return;
         event.deferReply(true).queue();
 
-        String joinCode = event.getOption("참여코드", OptionMapping::getAsString);
         String islandName = event.getOption("이름", OptionMapping::getAsString);
 
         try {
-            IslandEntity island = islandService.updateIslandDisplayNameByJoinCode(event.getGuild().getId(), joinCode, islandName);
+            IslandEntity island = islandService.updateIslandDisplayName(event.getGuild().getId(), islandName);
             event.getHook().sendMessage(
-                    "✅ 참여 코드 `" + island.getJoinCode() + "`의 표시 이름을 **" + island.getName() + "**(으)로 변경했습니다.\n" +
-                    "참여 코드/관리자 코드 흐름은 그대로 유지됩니다."
+                    "✅ 현재 섬의 표시 이름을 **" + island.getName() + "**(으)로 변경했습니다."
             ).queue();
         } catch (Exception e) {
             log.error("섬 이름 변경 오류", e);
@@ -100,39 +95,6 @@ public class SlashCommandListener extends ListenerAdapter {
             ).queue();
         } catch (Exception e) {
             log.error("채널 연결 오류", e);
-            event.getHook().sendMessage("❌ 오류: " + e.getMessage()).queue();
-        }
-    }
-
-    private void handleShowCode(SlashCommandInteractionEvent event) {
-        if (!isAdmin(event)) return;
-        event.deferReply(true).queue();
-
-        try {
-            IslandEntity island = islandService.getIslandByGuildDiscordId(event.getGuild().getId());
-            String code = island.getJoinCode();
-            if (code == null) {
-                event.getHook().sendMessage("⚠️ 참여 코드가 없습니다. `/창고 코드재발급` 을 실행하세요.").queue();
-            } else {
-                event.getHook().sendMessage(
-                        "📌 **" + island.getName() + "** 참여 코드: `" + code + "`"
-                ).queue();
-            }
-        } catch (Exception e) {
-            event.getHook().sendMessage("❌ 오류: " + e.getMessage()).queue();
-        }
-    }
-
-    private void handleRegenerateCode(SlashCommandInteractionEvent event) {
-        if (!isAdmin(event)) return;
-        event.deferReply(true).queue();
-
-        try {
-            String newCode = islandService.regenerateJoinCode(event.getGuild().getId());
-            event.getHook().sendMessage(
-                    "🔄 참여 코드가 재발급되었습니다.\n📌 새 코드: `" + newCode + "`\n기존 코드로 연결된 플레이어는 재입력이 필요합니다."
-            ).queue();
-        } catch (Exception e) {
             event.getHook().sendMessage("❌ 오류: " + e.getMessage()).queue();
         }
     }

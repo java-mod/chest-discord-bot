@@ -91,6 +91,7 @@ public class IslandService {
     @Transactional
     public String generateAdminCode(String discordGuildId) {
         IslandEntity island = getIslandByGuildDiscordId(discordGuildId);
+        ensureClientIslandMatches(island);
         String code = generateCode(8);
         adminCodeRepository.save(new AdminCodeEntity(island, code, Instant.now().plus(10, ChronoUnit.MINUTES)));
         return code;
@@ -169,6 +170,19 @@ public class IslandService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "섬을 찾을 수 없습니다. /창고 설정을 먼저 실행하세요."));
     }
 
+    @Transactional(readOnly = true)
+    public IslandEntity getSingleIslandForClient() {
+        List<IslandEntity> islands = islandRepository.findAll();
+        if (islands.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "연결 가능한 섬이 없습니다. Discord에서 /창고 설정을 먼저 실행하세요.");
+        }
+        if (islands.size() > 1) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "현재 백엔드 DB에 섬이 여러 개 있습니다. 서버 주소 기반 모드는 섬 1개만 지원합니다. 사용하지 않는 섬 데이터를 정리하세요.");
+        }
+        return islands.getFirst();
+    }
+
     @Transactional
     public IslandEntity updateIslandDisplayNameByJoinCode(String discordGuildId, String joinCode, String islandName) {
         requireText(discordGuildId, "discordGuildId");
@@ -184,6 +198,20 @@ public class IslandService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "해당 섬을 수정할 권한이 없습니다");
         }
 
+        island.setName(trimmedName);
+        return island;
+    }
+
+    @Transactional
+    public IslandEntity updateIslandDisplayName(String discordGuildId, String islandName) {
+        requireText(discordGuildId, "discordGuildId");
+        requireText(islandName, "islandName");
+        String trimmedName = islandName.trim();
+        if (trimmedName.length() > 120) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "섬 이름은 120자를 초과할 수 없습니다");
+        }
+
+        IslandEntity island = getIslandByGuildDiscordId(discordGuildId);
         island.setName(trimmedName);
         return island;
     }
@@ -204,6 +232,28 @@ public class IslandService {
         return entity;
     }
 
+    @Transactional
+    public AdminCodeEntity validateAdminCodeForSingleIsland(String adminCode) {
+        IslandEntity island = getSingleIslandForClient();
+        AdminCodeEntity entity = adminCodeRepository.findByCodeAndUsedFalse(adminCode)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 관리자 코드입니다"));
+        if (!entity.getIsland().getId().equals(island.getId())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "코드가 현재 서버의 섬과 일치하지 않습니다");
+        }
+        if (entity.getExpiresAt().isBefore(Instant.now())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "관리자 코드가 만료되었습니다");
+        }
+        return entity;
+    }
+
+    private void ensureClientIslandMatches(IslandEntity island) {
+        IslandEntity clientIsland = getSingleIslandForClient();
+        if (!clientIsland.getId().equals(island.getId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "현재 서버가 바라보는 섬과 Discord 서버의 섬이 일치하지 않습니다. 사용하지 않는 섬 데이터를 정리하세요.");
+        }
+    }
+
     // ── chest 설정 관리 ─────────────────────────────────────────
 
     @Transactional(readOnly = true)
@@ -213,7 +263,7 @@ public class IslandService {
                 .orElse(null);
 
         if (version == null) {
-            return new IslandConfigResponse(island.getId(), island.getName(), 0, List.of());
+            return new IslandConfigResponse(island.getId(), island.getName(), 0, List.of(), List.of());
         }
 
         List<ChestDefinitionResponse> chests = chestDefinitionRepository.findAllByConfigVersionIdOrderByIdAsc(version.getId())
@@ -221,7 +271,7 @@ public class IslandService {
                 .map(this::toChestResponse)
                 .toList();
 
-        return new IslandConfigResponse(island.getId(), island.getName(), version.getVersionNumber(), chests);
+        return new IslandConfigResponse(island.getId(), island.getName(), version.getVersionNumber(), chests, List.of());
     }
 
     @Transactional
