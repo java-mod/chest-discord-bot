@@ -11,6 +11,8 @@ public interface ChestLogRepository extends JpaRepository<ChestLogEntity, Long> 
 
     Page<ChestLogEntity> findByIslandIdOrderByCreatedAtDesc(Long islandId, Pageable pageable);
 
+    java.util.List<ChestLogEntity> findTop100ByIslandIdOrderByCreatedAtDesc(Long islandId);
+
     @Query("SELECT c FROM ChestLogEntity c WHERE c.island.id = :islandId " +
            "AND (:playerName IS NULL OR LOWER(c.playerName) LIKE LOWER(CONCAT('%', :playerName, '%'))) " +
            "AND (:chestKey IS NULL OR LOWER(c.chestKey) LIKE LOWER(CONCAT('%', :chestKey, '%'))) " +

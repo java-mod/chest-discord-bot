@@ -43,10 +43,10 @@ public class ChestLogEntity {
     @Column(nullable = false, length = 120)
     private String chestKey;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(nullable = false, columnDefinition = "LONGTEXT")
     private String takenJson;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(nullable = false, columnDefinition = "LONGTEXT")
     private String addedJson;
 
     @Column(nullable = false)
