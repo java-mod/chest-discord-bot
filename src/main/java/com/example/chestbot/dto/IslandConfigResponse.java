@@ -6,6 +6,7 @@ public record IslandConfigResponse(
         Long islandId,
         String islandName,
         long configVersion,
-        List<ChestDefinitionResponse> chests
+        List<ChestDefinitionResponse> chests,
+        List<MemberHudEntryResponse> members
 ) {
 }

@@ -7,6 +7,7 @@ public record LicenseConnectResponse(
         String islandName,
         String joinCode,
         long configVersion,
-        List<ChestDefinitionResponse> chests
+        List<ChestDefinitionResponse> chests,
+        List<MemberHudEntryResponse> members
 ) {
 }

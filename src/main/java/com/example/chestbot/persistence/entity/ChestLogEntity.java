@@ -40,6 +40,18 @@ public class ChestLogEntity {
     @Column(nullable = false, length = 64)
     private String playerName;
 
+    @Column(length = 64)
+    private String playerUuid;
+
+    @Column(length = 255)
+    private String skinTexture;
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String takenVisualData;
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String addedVisualData;
+
     @Column(nullable = false, length = 120)
     private String chestKey;
 
@@ -61,6 +73,10 @@ public class ChestLogEntity {
             String joinCode,
             long configVersion,
             String playerName,
+            String playerUuid,
+            String skinTexture,
+            String takenVisualData,
+            String addedVisualData,
             String chestKey,
             String takenJson,
             String addedJson,
@@ -71,6 +87,10 @@ public class ChestLogEntity {
         this.joinCode = joinCode;
         this.configVersion = configVersion;
         this.playerName = playerName;
+        this.playerUuid = playerUuid;
+        this.skinTexture = skinTexture;
+        this.takenVisualData = takenVisualData;
+        this.addedVisualData = addedVisualData;
         this.chestKey = chestKey;
         this.takenJson = takenJson;
         this.addedJson = addedJson;
@@ -83,6 +103,10 @@ public class ChestLogEntity {
     public String getJoinCode() { return joinCode; }
     public long getConfigVersion() { return configVersion; }
     public String getPlayerName() { return playerName; }
+    public String getPlayerUuid() { return playerUuid; }
+    public String getSkinTexture() { return skinTexture; }
+    public String getTakenVisualData() { return takenVisualData; }
+    public String getAddedVisualData() { return addedVisualData; }
     public String getChestKey() { return chestKey; }
     public String getTakenJson() { return takenJson; }
     public String getAddedJson() { return addedJson; }
