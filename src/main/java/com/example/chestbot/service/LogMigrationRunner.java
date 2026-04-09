@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
@@ -32,6 +33,9 @@ public class LogMigrationRunner implements ApplicationRunner {
     private static final Path BANK_LOG_PATH = Path.of("data", "island-bank-log-events.jsonl");
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    @Value("${app.log-migration.enabled:true}")
+    private boolean enabled;
+
     private final ChestLogRepository chestLogRepository;
     private final IslandBankLogRepository islandBankLogRepository;
     private final IslandRepository islandRepository;
@@ -48,6 +52,10 @@ public class LogMigrationRunner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        if (!enabled) {
+            log.info("JSONL → SQL 로그 마이그레이션 비활성화됨");
+            return;
+        }
         migrateChestLogs();
         migrateIslandBankLogs();
     }
@@ -93,7 +101,7 @@ public class LogMigrationRunner implements ApplicationRunner {
 
                     chestLogRepository.save(new ChestLogEntity(
                             island, islandName, joinCode != null ? joinCode : "",
-                            configVersion, playerName, chestKey,
+                            configVersion, playerName, null, null, null, null, chestKey,
                             takenJson, addedJson, createdAt
                     ));
                     success++;

@@ -9,16 +9,22 @@ discord.token=CHANGE_ME
 app.admin-key=CHANGE_ME
 
 # ── DB ───────────────────────────────────────────────────────
-spring.datasource.url=jdbc:mysql://15.235.143.55:3306/chest_bot?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
-spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
-spring.datasource.username=chest_bot
-spring.datasource.password=CHANGE_ME
+# 기본값은 application.properties 의 로컬 H2 파일 DB 입니다.
+# MySQL로 테스트하려면 아래 4줄의 주석을 해제하고 값을 채우세요.
+# spring.datasource.url=jdbc:mysql://127.0.0.1:3306/chest_bot?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
+# spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+# spring.datasource.username=chest_bot
+# spring.datasource.password=CHANGE_ME
 
 # ── 레거시 H2 → MySQL 마이그레이션 ────────────────────────────
 app.legacy-h2.enabled=false
 app.legacy-h2.search-paths=/root/bot/chest_bot/data/chestbot,./data/chestbot
 app.legacy-h2.primary-username=sa
 app.legacy-h2.primary-password=
+
+# ── JSONL → SQL 로그 마이그레이션 ──────────────────────────────
+# 로컬 테스트는 false 권장. 운영에서 기존 로그를 DB로 이관할 때만 true.
+app.log-migration.enabled=false
 
 # ── 관리자 대시보드 비밀번호 ───────────────────────────────────
 # [최초 설정] 아래 두 줄 활성화 후 서버 실행 → 로그 [ADMIN-HASH] 복사
