@@ -40,7 +40,7 @@ spring.application.name=changojigi-discord-bot
 
 ### local.properties
 
-루트에 `local.properties` 파일을 만들고 실제 값을 넣어야 합니다.
+프로젝트 루트에 `local.properties` 파일만 두면, 실행 시 Spring Boot가 이를 읽어 **그 안의 `discord.token`으로 Discord 봇을 로그인**시키고 같은 프로세스에서 API 서버도 함께 띄웁니다.
 
 예시:
 
@@ -49,7 +49,7 @@ discord.token=your_discord_bot_token
 app.admin-key=your_admin_key
 ```
 
-로컬 H2 기본값으로 충분하면 위 2개만 있어도 서버와 봇이 함께 뜹니다.
+로컬 H2 기본값으로 충분하면 위 2개만 있어도 **"local.properties 넣고 실행 = 그 토큰으로 봇+서버 구동"** 흐름이 바로 성립합니다.
 
 ### 환경변수
 
@@ -215,3 +215,7 @@ src/main/java/com/example/chestbot
 ├─ persistence/  # 엔티티 / 리포지토리
 └─ service/      # Discord, 섬 설정, 로그 처리
 ```
+
+## 라이선스
+
+이 프로젝트는 **GPL-3.0-only** 라이선스를 따릅니다. 자세한 내용은 `LICENSE` 파일을 확인하세요.

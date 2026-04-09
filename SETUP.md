@@ -2,7 +2,7 @@
 
 이 프로젝트는 **Spring Boot 서버 + Discord 봇이 한 프로세스에서 같이 도는 구조**입니다.
 
-즉, `discord.token` 이 들어 있는 `local.properties`만 준비하면:
+즉, **프로젝트 루트에 `local.properties`를 넣고 실행하면** 그 안의 `discord.token`으로 Discord 봇이 로그인하고:
 
 - REST API 서버가 뜨고
 - 같은 프로세스에서 Discord 봇이 로그인하고
@@ -79,3 +79,7 @@ Fabric 모드 쪽에서는 참여 코드가 아니라 아래 순서로 붙습니
 - 운영 로그/백업(`runlogs/`, `data-backups/`)은 로컬 산출물입니다.
 - 기본 포트는 `5000`, 필요하면 `SERVER_PORT`로 변경합니다.
 - GitHub Actions는 태그/릴리즈 생성을 시도하지만, Release 자산에 JAR이 항상 첨부된다고 전제하지 마세요. 배포 파일은 `build/libs/*.jar` 기준으로 확인하는 편이 안전합니다.
+
+## 8. 라이선스
+
+이 프로젝트는 **GPL-3.0-only** 라이선스를 따릅니다. 자세한 내용은 `LICENSE` 파일을 확인하세요.
