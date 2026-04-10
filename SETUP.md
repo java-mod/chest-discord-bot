@@ -21,11 +21,21 @@
 최소 예시:
 
 ```properties
+spring.profiles.active=h2
 discord.token=YOUR_DISCORD_BOT_TOKEN
 app.admin-key=CHANGE_ME
 ```
 
 기본값으로는 H2 파일 DB를 사용하므로, 로컬 테스트만 할 때는 MySQL 설정이 없어도 됩니다.
+MySQL을 쓰려면 `spring.profiles.active=mysql` 로 바꾸고 아래 값을 `local.properties`에 추가하세요.
+
+```properties
+app.datasource.mysql.url=jdbc:mysql://127.0.0.1:3306/chest_bot?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
+app.datasource.mysql.username=chest_bot
+app.datasource.mysql.password=CHANGE_ME
+```
+
+MySQL 연결정보는 빌드 산출물에 포함되지 않으며, `local.properties` 또는 `MYSQL_URL`, `MYSQL_USERNAME`, `MYSQL_PASSWORD` 환경변수로만 주입됩니다.
 
 ## 3. 실행 방법
 

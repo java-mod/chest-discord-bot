@@ -24,7 +24,7 @@
 - Spring Boot `3.4.3`
 - Spring Web / Spring Data JPA
 - JDA `5.2.1`
-- H2 Database
+- H2 Database / MySQL
 - Gradle
 
 ## 설정
@@ -34,7 +34,7 @@
 ```properties
 spring.config.import=optional:file:./local.properties
 server.port=${SERVER_PORT:5000}
-spring.datasource.url=jdbc:h2:file:./data/chestbot;AUTO_SERVER=TRUE
+spring.profiles.default=h2
 spring.application.name=changojigi-discord-bot
 ```
 
@@ -45,11 +45,24 @@ spring.application.name=changojigi-discord-bot
 예시:
 
 ```properties
+spring.profiles.active=h2
 discord.token=your_discord_bot_token
 app.admin-key=your_admin_key
 ```
 
-로컬 H2 기본값으로 충분하면 위 2개만 있어도 **"local.properties 넣고 실행 = 그 토큰으로 봇+서버 구동"** 흐름이 바로 성립합니다.
+로컬 H2를 쓸 때는 위 3개면 충분합니다. MySQL을 쓰려면 프로파일을 `mysql`로 바꾸고 아래 값을 추가하세요.
+
+```properties
+spring.profiles.active=mysql
+discord.token=your_discord_bot_token
+app.admin-key=your_admin_key
+app.datasource.mysql.url=jdbc:mysql://127.0.0.1:3306/chest_bot?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
+app.datasource.mysql.username=chest_bot
+app.datasource.mysql.password=your_mysql_password
+```
+
+이제 로컬에서는 **`spring.profiles.active=h2|mysql` 로 DB 종류를 명시적으로 선택**합니다.
+`mysql` 프로파일의 연결 정보는 **빌드된 `application-mysql.properties`에 하드코딩되지 않고**, `local.properties` 또는 `MYSQL_URL`, `MYSQL_USERNAME`, `MYSQL_PASSWORD` 환경변수에서만 읽습니다.
 
 ### 환경변수
 
@@ -94,7 +107,8 @@ export SERVER_PORT="5000"
 
 ## 데이터 저장 위치
 
-- H2 DB: `./data/chestbot`
+- H2 DB (`h2` 프로파일): `./data/chestbot`
+- MySQL (`mysql` 프로파일): `app.datasource.mysql.*` 값으로 연결
 - 창고 로그 파일: `./data/chest-log-events.jsonl`
 - 섬 은행 로그 파일: `./data/island-bank-log-events.jsonl`
 
