@@ -4,11 +4,10 @@ import com.example.chestbot.dto.AdminConnectRequest;
 import com.example.chestbot.dto.AdminConnectResponse;
 import com.example.chestbot.dto.AdminFinalizeRequest;
 import com.example.chestbot.dto.ClientChestLogRequest;
+import com.example.chestbot.dto.ClientFarmingActivityRequest;
+import com.example.chestbot.dto.ClientFarmingDeclareRequest;
 import com.example.chestbot.dto.ClientIslandBankLogRequest;
-import com.example.chestbot.dto.ConnectRequest;
 import com.example.chestbot.dto.IslandConfigResponse;
-import com.example.chestbot.dto.LicenseConnectRequest;
-import com.example.chestbot.dto.LicenseConnectResponse;
 import com.example.chestbot.service.ClientSyncService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,11 +32,6 @@ public class ClientSyncController {
         return clientSyncService.connect();
     }
 
-    @PostMapping("/connect/license")
-    public LicenseConnectResponse connectWithLicense(@RequestBody LicenseConnectRequest request) {
-        return clientSyncService.connectWithLicense(request.licenseKey());
-    }
-
     @PostMapping("/admin/connect")
     public AdminConnectResponse adminConnect(@RequestBody AdminConnectRequest request) {
         return clientSyncService.adminConnect(request.adminCode());
@@ -57,6 +51,18 @@ public class ClientSyncController {
     @PostMapping("/events/island-bank-log")
     public ResponseEntity<Map<String, String>> logIslandBankEvent(@RequestBody ClientIslandBankLogRequest request) {
         clientSyncService.logIslandBankEvent(request);
+        return ResponseEntity.ok(Map.of("status", "ok"));
+    }
+
+    @PostMapping("/events/farming/declare")
+    public ResponseEntity<Map<String, String>> declareFarming(@RequestBody ClientFarmingDeclareRequest request) {
+        clientSyncService.declareFarming(request);
+        return ResponseEntity.ok(Map.of("status", "ok"));
+    }
+
+    @PostMapping("/events/farming/activity")
+    public ResponseEntity<Map<String, String>> reportFarmingActivity(@RequestBody ClientFarmingActivityRequest request) {
+        clientSyncService.reportFarmingActivity(request);
         return ResponseEntity.ok(Map.of("status", "ok"));
     }
 }

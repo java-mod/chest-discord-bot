@@ -4,38 +4,50 @@ import com.example.chestbot.dto.ChestDefinitionRequest;
 import com.example.chestbot.dto.ChestDefinitionResponse;
 import com.example.chestbot.dto.CreateGuildRequest;
 import com.example.chestbot.dto.IslandConfigResponse;
+import com.example.chestbot.dto.MemberHudEntryResponse;
 import com.example.chestbot.dto.IslandSummaryResponse;
 import com.example.chestbot.dto.UpdateChestConfigRequest;
 import com.example.chestbot.persistence.entity.AdminCodeEntity;
 import com.example.chestbot.persistence.entity.ChestConfigVersionEntity;
 import com.example.chestbot.persistence.entity.ChestDefinitionEntity;
+import com.example.chestbot.persistence.entity.ChestLogEntity;
+import com.example.chestbot.persistence.entity.FarmingStatusEntity;
 import com.example.chestbot.persistence.entity.GuildEntity;
 import com.example.chestbot.persistence.entity.IslandChannelEntity;
 import com.example.chestbot.persistence.entity.IslandEntity;
 import com.example.chestbot.persistence.repository.AdminCodeRepository;
 import com.example.chestbot.persistence.repository.ChestConfigVersionRepository;
 import com.example.chestbot.persistence.repository.ChestDefinitionRepository;
+import com.example.chestbot.persistence.repository.ChestLogRepository;
+import com.example.chestbot.persistence.repository.FarmingStatusRepository;
 import com.example.chestbot.persistence.repository.GuildRepository;
 import com.example.chestbot.persistence.repository.IslandChannelRepository;
 import com.example.chestbot.persistence.repository.IslandRepository;
 import com.example.chestbot.util.TextSanitizer;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 @Service
 public class IslandService {
 
     public static final String CHEST_LOG_PURPOSE = "CHEST_LOG";
     public static final String BANK_LOG_PURPOSE = "BANK_LOG";
+    private static final Duration FARMING_ACTIVE_WINDOW = Duration.ofMinutes(5);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     private final SecureRandom rng = new SecureRandom();
 
@@ -44,7 +56,9 @@ public class IslandService {
     private final IslandChannelRepository islandChannelRepository;
     private final ChestConfigVersionRepository chestConfigVersionRepository;
     private final ChestDefinitionRepository chestDefinitionRepository;
+    private final ChestLogRepository chestLogRepository;
     private final AdminCodeRepository adminCodeRepository;
+    private final FarmingStatusRepository farmingStatusRepository;
 
     public IslandService(
             GuildRepository guildRepository,
@@ -52,14 +66,18 @@ public class IslandService {
             IslandChannelRepository islandChannelRepository,
             ChestConfigVersionRepository chestConfigVersionRepository,
             ChestDefinitionRepository chestDefinitionRepository,
-            AdminCodeRepository adminCodeRepository
+            ChestLogRepository chestLogRepository,
+            AdminCodeRepository adminCodeRepository,
+            FarmingStatusRepository farmingStatusRepository
     ) {
         this.guildRepository = guildRepository;
         this.islandRepository = islandRepository;
         this.islandChannelRepository = islandChannelRepository;
         this.chestConfigVersionRepository = chestConfigVersionRepository;
         this.chestDefinitionRepository = chestDefinitionRepository;
+        this.chestLogRepository = chestLogRepository;
         this.adminCodeRepository = adminCodeRepository;
+        this.farmingStatusRepository = farmingStatusRepository;
     }
 
     // ── 슬래시 커맨드용 통합 셋업 ──────────────────────────────────
@@ -95,6 +113,29 @@ public class IslandService {
         String code = generateCode(8);
         adminCodeRepository.save(new AdminCodeEntity(island, code, Instant.now().plus(10, ChronoUnit.MINUTES)));
         return code;
+    }
+
+    @Transactional
+    public void declareFarming(IslandEntity island, String playerName, String playerUuid, String skinTexture, String cropKey, Instant now) {
+        FarmingStatusEntity status = farmingStatusRepository.findByIslandIdAndPlayerUuid(island.getId(), playerUuid)
+                .orElseGet(() -> new FarmingStatusEntity(island, playerName, playerUuid, skinTexture, cropKey, null));
+        status.updateProfile(playerName, skinTexture);
+        status.updateCrop(cropKey, status.getLastFarmingAt());
+        farmingStatusRepository.save(status);
+    }
+
+    @Transactional
+    public void reportFarmingActivity(IslandEntity island, String playerUuid, String cropKey, Instant activityAt, String skinTexture) {
+        FarmingStatusEntity status = farmingStatusRepository.findByIslandIdAndPlayerUuid(island.getId(), playerUuid)
+                .orElse(null);
+        if (status == null) {
+            return;
+        }
+        if (!status.getCropKey().equalsIgnoreCase(cropKey)) {
+            return;
+        }
+        status.updateActivity(activityAt, skinTexture);
+        farmingStatusRepository.save(status);
     }
 
     // ── 채널 바인딩 ─────────────────────────────────────────────
@@ -263,7 +304,7 @@ public class IslandService {
                 .orElse(null);
 
         if (version == null) {
-            return new IslandConfigResponse(island.getId(), island.getName(), 0, List.of(), List.of());
+            return new IslandConfigResponse(island.getId(), island.getName(), 0, List.of(), hudMembers(island.getId()));
         }
 
         List<ChestDefinitionResponse> chests = chestDefinitionRepository.findAllByConfigVersionIdOrderByIdAsc(version.getId())
@@ -271,7 +312,7 @@ public class IslandService {
                 .map(this::toChestResponse)
                 .toList();
 
-        return new IslandConfigResponse(island.getId(), island.getName(), version.getVersionNumber(), chests, List.of());
+        return new IslandConfigResponse(island.getId(), island.getName(), version.getVersionNumber(), chests, hudMembers(island.getId()));
     }
 
     @Transactional
@@ -354,6 +395,123 @@ public class IslandService {
                 entity.getWorldHint(),
                 entity.getMetadataJson()
         );
+    }
+
+    private List<MemberHudEntryResponse> hudMembers(Long islandId) {
+        LinkedHashMap<String, MemberHudEntryResponse> merged = new LinkedHashMap<>();
+
+        for (ChestLogEntity event : chestLogRepository.findTop100ByIslandIdOrderByCreatedAtDesc(islandId)) {
+            Map<String, Integer> taken = parseItemCounts(event.getTakenJson());
+            if (taken.isEmpty()) {
+                continue;
+            }
+
+            String key = memberKey(event.getPlayerUuid(), event.getPlayerName());
+            if (merged.containsKey(key)) {
+                continue;
+            }
+
+            ItemSummary summary = summarizeItems(taken);
+            merged.put(key, new MemberHudEntryResponse(
+                    event.getPlayerName(),
+                    summary.itemName(),
+                    summary.itemCount(),
+                    taken.size(),
+                    summary.totalItems(),
+                    event.getTakenVisualData(),
+                    event.getChestKey(),
+                    event.getPlayerUuid(),
+                    event.getSkinTexture(),
+                    event.getCreatedAt().toEpochMilli(),
+                    null,
+                    0L
+            ));
+        }
+
+        Instant cutoff = Instant.now().minus(FARMING_ACTIVE_WINDOW);
+        for (FarmingStatusEntity status : farmingStatusRepository.findAllByIslandId(islandId)) {
+            if (status.getLastFarmingAt() == null || status.getLastFarmingAt().isBefore(cutoff)) {
+                continue;
+            }
+
+            String key = memberKey(status.getPlayerUuid(), status.getPlayerName());
+            MemberHudEntryResponse existing = merged.get(key);
+            if (existing == null) {
+                merged.put(key, new MemberHudEntryResponse(
+                        status.getPlayerName(),
+                        "",
+                        0,
+                        0,
+                        0,
+                        null,
+                        null,
+                        status.getPlayerUuid(),
+                        status.getSkinTexture(),
+                        status.getLastFarmingAt().toEpochMilli(),
+                        status.getCropKey(),
+                        status.getLastFarmingAt().toEpochMilli()
+                ));
+                continue;
+            }
+
+            merged.put(key, new MemberHudEntryResponse(
+                    existing.playerName(),
+                    existing.itemName(),
+                    existing.itemCount(),
+                    existing.totalKinds(),
+                    existing.totalItems(),
+                    existing.itemVisualData(),
+                    existing.chestName(),
+                    firstNonBlank(existing.playerUuid(), status.getPlayerUuid()),
+                    firstNonBlank(existing.skinTexture(), status.getSkinTexture()),
+                    existing.updatedAtMillis(),
+                    status.getCropKey(),
+                    status.getLastFarmingAt().toEpochMilli()
+            ));
+        }
+
+        return List.copyOf(merged.values());
+    }
+
+    private Map<String, Integer> parseItemCounts(String json) {
+        if (json == null || json.isBlank()) {
+            return Collections.emptyMap();
+        }
+        try {
+            Map<String, Integer> parsed = OBJECT_MAPPER.readValue(json, new TypeReference<Map<String, Integer>>() {});
+            return parsed == null ? Collections.emptyMap() : parsed;
+        } catch (Exception ignored) {
+            return Collections.emptyMap();
+        }
+    }
+
+    private ItemSummary summarizeItems(Map<String, Integer> items) {
+        String topItem = "";
+        int topCount = 0;
+        int total = 0;
+        for (Map.Entry<String, Integer> entry : items.entrySet()) {
+            int count = Math.max(entry.getValue() == null ? 0 : entry.getValue(), 0);
+            total += count;
+            if (count > topCount) {
+                topItem = entry.getKey();
+                topCount = count;
+            }
+        }
+        return new ItemSummary(topItem, topCount, total);
+    }
+
+    private String memberKey(String playerUuid, String playerName) {
+        if (playerUuid != null && !playerUuid.isBlank()) {
+            return playerUuid.trim().toLowerCase(Locale.ROOT);
+        }
+        return playerName == null ? "" : playerName.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String firstNonBlank(String primary, String fallback) {
+        return primary != null && !primary.isBlank() ? primary : fallback;
+    }
+
+    private record ItemSummary(String itemName, int itemCount, int totalItems) {
     }
 
     private String generateCode(int length) {

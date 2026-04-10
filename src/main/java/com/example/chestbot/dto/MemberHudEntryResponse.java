@@ -10,6 +10,8 @@ public record MemberHudEntryResponse(
         String chestName,
         String playerUuid,
         String skinTexture,
-        long updatedAtMillis
+        long updatedAtMillis,
+        String farmingCropKey,
+        long farmingUpdatedAtMillis
 ) {
 }

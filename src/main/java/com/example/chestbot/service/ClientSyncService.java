@@ -3,9 +3,10 @@ package com.example.chestbot.service;
 import com.example.chestbot.dto.AdminConnectResponse;
 import com.example.chestbot.dto.AdminFinalizeRequest;
 import com.example.chestbot.dto.ClientChestLogRequest;
+import com.example.chestbot.dto.ClientFarmingActivityRequest;
+import com.example.chestbot.dto.ClientFarmingDeclareRequest;
 import com.example.chestbot.dto.ClientIslandBankLogRequest;
 import com.example.chestbot.dto.IslandConfigResponse;
-import com.example.chestbot.dto.LicenseConnectResponse;
 import com.example.chestbot.dto.UpdateChestConfigRequest;
 import com.example.chestbot.persistence.entity.AdminCodeEntity;
 import com.example.chestbot.persistence.entity.ChestLogEntity;
@@ -33,20 +34,17 @@ public class ClientSyncService {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final IslandService islandService;
-    private final LicenseService licenseService;
     private final ChestLogRepository chestLogRepository;
     private final IslandBankLogRepository islandBankLogRepository;
     private final DiscordService discordService;
 
     public ClientSyncService(
             IslandService islandService,
-            LicenseService licenseService,
             ChestLogRepository chestLogRepository,
             IslandBankLogRepository islandBankLogRepository,
             DiscordService discordService
     ) {
         this.islandService = islandService;
-        this.licenseService = licenseService;
         this.chestLogRepository = chestLogRepository;
         this.islandBankLogRepository = islandBankLogRepository;
         this.discordService = discordService;
@@ -55,30 +53,13 @@ public class ClientSyncService {
     @Transactional
     public IslandConfigResponse connect() {
         IslandEntity island = islandService.getSingleIslandForClient();
-        // 조인 코드 연결은 라이선스 검증 없이 허용 (이벤트 전송 시 검증)
         return islandService.getActiveConfig(island.getId());
-    }
-
-    @Transactional
-    public LicenseConnectResponse connectWithLicense(String licenseKey) {
-        // 라이선스 키로 섬을 찾고, 유효성 검증까지 함께 수행
-        IslandEntity island = licenseService.findIslandByLicenseKey(licenseKey);
-        IslandConfigResponse config = islandService.getActiveConfig(island.getId());
-        return new LicenseConnectResponse(
-                island.getId(),
-                island.getName(),
-                island.getJoinCode(),
-                config.configVersion(),
-                config.chests(),
-                config.members()
-        );
     }
 
     @Transactional
     public AdminConnectResponse adminConnect(String adminCode) {
         AdminCodeEntity code = islandService.validateAdminCodeForSingleIsland(adminCode);
         IslandEntity island = code.getIsland();
-        licenseService.requireActiveLicense(island);
         return new AdminConnectResponse(island.getId(), island.getName());
     }
 
@@ -87,7 +68,6 @@ public class ClientSyncService {
         AdminCodeEntity code = islandService.validateAdminCodeForSingleIsland(request.adminCode());
         code.markUsed();
         IslandEntity island = code.getIsland();
-        licenseService.requireActiveLicense(island);
 
         UpdateChestConfigRequest configRequest = new UpdateChestConfigRequest("admin", request.chests());
         return islandService.updateConfig(island.getId(), configRequest);
@@ -96,7 +76,6 @@ public class ClientSyncService {
     @Transactional
     public void logChestEvent(ClientChestLogRequest request) {
         IslandEntity island = islandService.getSingleIslandForClient();
-        licenseService.requireActiveLicense(island);
         Map<String, Integer> taken = request.taken() == null ? Collections.emptyMap() : request.taken();
         Map<String, Integer> added = request.added() == null ? Collections.emptyMap() : request.added();
 
@@ -147,7 +126,6 @@ public class ClientSyncService {
     public void logIslandBankEvent(ClientIslandBankLogRequest request) {
         validateIslandBankEvent(request);
         IslandEntity island = islandService.getSingleIslandForClient();
-        licenseService.requireActiveLicense(island);
 
         String normalizedCode = island.getJoinCode().trim().toUpperCase();
         String note = sanitizeNote(request.note());
@@ -186,6 +164,26 @@ public class ClientSyncService {
         );
     }
 
+    @Transactional
+    public void declareFarming(ClientFarmingDeclareRequest request) {
+        validateFarmingDeclare(request);
+        IslandEntity island = islandService.getSingleIslandForClient();
+        islandService.declareFarming(island, request.playerName().trim(), request.playerUuid().trim(), trimToNull(request.skinTexture()), request.cropKey().trim(), Instant.now());
+    }
+
+    @Transactional
+    public void reportFarmingActivity(ClientFarmingActivityRequest request) {
+        validateFarmingActivity(request);
+        IslandEntity island = islandService.getSingleIslandForClient();
+        islandService.reportFarmingActivity(
+                island,
+                request.playerUuid().trim(),
+                request.cropKey().trim(),
+                Instant.ofEpochMilli(request.activityAtMillis()),
+                trimToNull(request.skinTexture())
+        );
+    }
+
     private void validateIslandBankEvent(ClientIslandBankLogRequest request) {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "bank log request is required");
@@ -203,6 +201,27 @@ public class ClientSyncService {
         }
     }
 
+    private void validateFarmingDeclare(ClientFarmingDeclareRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "farming declare request is required");
+        }
+        requireText(request.playerName(), "playerName");
+        requireText(request.playerUuid(), "playerUuid");
+        requireText(request.cropKey(), "cropKey");
+    }
+
+    private void validateFarmingActivity(ClientFarmingActivityRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "farming activity request is required");
+        }
+        requireText(request.playerName(), "playerName");
+        requireText(request.playerUuid(), "playerUuid");
+        requireText(request.cropKey(), "cropKey");
+        if (request.activityAtMillis() <= 0L) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "activityAtMillis must be greater than 0");
+        }
+    }
+
     private void requireText(String value, String fieldName) {
         if (value == null || value.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, fieldName + " is required");
@@ -215,6 +234,14 @@ public class ClientSyncService {
         }
         String trimmed = note.trim();
         return trimmed.length() <= 500 ? trimmed : trimmed.substring(0, 500);
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private String toJson(Map<String, Integer> map) {
